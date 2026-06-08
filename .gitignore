@@ -57,4 +57,4 @@ prisma/*.db-journal
 .worktrees/
 
 # Trae / AI rules
-.trae/
+.trae/memory/
