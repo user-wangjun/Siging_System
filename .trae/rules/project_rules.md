@@ -32,11 +32,18 @@
 
 ## 4. 技术栈约束
 
-- 前端：Electron（可选）+ React + TypeScript + Vite + Tailwind + shadcn/ui + zustand + axios
-- 后端：Node.js + NestJS + TypeScript + Prisma + PostgreSQL
-- 静态资源：OBS（华为云对象存储）
-- 包管理：npm
-- 工具：ESLint + Prettier
+- 后端：Python 3.11+ + Flask 3.x + Jinja2（Flask 内置）
+- 前端：Flask 模板渲染（HTML + Jinja2 + Tailwind CSS CDN + Alpine.js CDN），首期不引入 SPA 框架
+- 数据库：MySQL 8.0
+- 数据库驱动：PyMySQL（首期不引入 SQLAlchemy ORM）
+- 表单与校验：Flask-WTF + WTForms
+- 静态资源：本地 `static/` 目录（用户上传走 `static/uploads/`）
+- WSGI 容器：gunicorn（Linux）/ waitress（Windows）
+- 测试：pytest + pytest-flask
+- 代码规范：Ruff（lint + format）+ mypy
+- 配置管理：python-dotenv
+- 包管理：pip + venv（可选 uv）
+- 工具替代说明：Ruff 单工具替代原 ESLint+Prettier 角色
 
 ## 5. 文档约定
 
@@ -53,7 +60,8 @@
 ## 7. 风险与回滚
 
 - 涉及数据库 schema 变更：必须写 migration + 回滚脚本。
-- 涉及第三方 API（微信/短信/邮件/OBS）：先在沙箱验证再上生产。
+- 涉及第三方 API（微信/短信/邮件）：先在沙箱验证再上生产。
+- 涉及 `static/uploads/` 文件存储：单实例方案下，部署前明确备份策略；多实例化时需引入共享存储。
 
 ---
 
@@ -62,3 +70,4 @@
 | 日期 | 变更 | 作者 |
 | --- | --- | --- |
 | 2026-06-08 | v0.1 初稿，固化 Superpowers 流程与团队分工 | 幻想 |
+| 2026-06-08 | v0.2 技术栈重写：NestJS+React → Flask 单体；PostgreSQL+Prisma → MySQL+PyMySQL；OBS → 本地 static/；工具链替换为 Ruff + pytest | 幻想 |

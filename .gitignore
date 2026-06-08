@@ -57,4 +57,6 @@ prisma/*.db-journal
 .worktrees/
 
 # Trae / AI rules
-.trae/memory/
+# 整体忽略 .trae/，但保留 rules/（团队 AI 协作规则需要入库）
+.trae/
+!.trae/rules/
