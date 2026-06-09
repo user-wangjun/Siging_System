@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}活动列表 - WaytoAGI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0;">
+        <h1>活动列表</h1>
+        <button onclick="createActivity()" id="createBtn" style="display:none; padding: 0.5rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+            + 创建活动
+        </button>
+    </div>
+
+    <div id="activityList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        <p style="grid-column: 1 / -1; text-align: center; color: #999; padding: 3rem;">加载中...</p>
+    </div>
+
+    <div id="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin: 2rem 0;"></div>
+</div>
+
+<script>
+let currentPage = 1;
+
+function getToken() {
+    return localStorage.getItem('access_token');
+}
+
+function isLoggedIn() {
+    return !!getToken();
+}
+
+async function loadActivities(page = 1) {
+    currentPage = page;
+    const listEl = document.getElementById('activityList');
+    listEl.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #999; padding: 3rem;">加载中...</p>';
+
+    try {
+        const res = await fetch(`/api/v1/activities?page=${page}&per_page=12`);
+        const data = await res.json();
+
+        if (data.code !== 200 || !data.data || !data.data.items) {
+            listEl.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #999; padding: 3rem;">暂无活动</p>';
+            return;
+        }
+
+        const items = data.data.items;
+        if (items.length === 0) {
+            listEl.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #999; padding: 3rem;">暂无活动</p>';
+            return;
+        }
+
+        listEl.innerHTML = items.map(a => `
+            <div style="background: white; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'"
+                 onclick="location.href='/activities/${a.id}'">
+                <div style="height: 160px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                    ${a.cover_url ? `<img src="${a.cover_url}" style="width:100%;height:100%;object-fit:cover;">` : '📅'}
+                </div>
+                <div style="padding: 1rem;">
+                    <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: #1a1a2e;">${a.title}</h3>
+                    <p style="color: #666; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        📍 ${a.location || '线上'} &nbsp;|&nbsp; 👥 ${a.current_count}/${a.max_participants || '不限'}
+                    </p>
+                    <p style="color: #999; font-size: 0.8rem;">
+                        🕐 ${formatDate(a.start_time)}
+                    </p>
+                    <span style="display: inline-block; margin-top: 0.5rem; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;
+                        ${a.status === 'published' ? 'background: #e6f7e6; color: #07c160;' :
+                          a.status === 'pending' ? 'background: #fff7e6; color: #faad14;' :
+                          'background: #f0f0f0; color: #999;'}">
+                        ${statusText(a.status)}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+
+        // 分页
+        renderPagination(data.data);
+    } catch (err) {
+        listEl.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #e64340; padding: 3rem;">加载失败，请刷新重试</p>';
+    }
+}
+
+function statusText(s) {
+    const map = { draft: '草稿', pending: '审核中', published: '报名中', ongoing: '进行中', ended: '已结束', cancelled: '已取消' };
+    return map[s] || s;
+}
+
+function formatDate(iso) {
+    if (!iso) return '待定';
+    const d = new Date(iso);
+    return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function renderPagination(pagination) {
+    const el = document.getElementById('pagination');
+    if (!pagination || pagination.pages <= 1) {
+        el.innerHTML = '';
+        return;
+    }
+    let html = '';
+    for (let i = 1; i <= pagination.pages; i++) {
+        html += `<button onclick="loadActivities(${i})" style="padding: 0.4rem 0.8rem; border: 1px solid #ddd; background: ${i === currentPage ? '#667eea' : 'white'}; color: ${i === currentPage ? 'white' : '#333'}; border-radius: 0.25rem; cursor: pointer;">${i}</button>`;
+    }
+    el.innerHTML = html;
+}
+
+function createActivity() {
+    alert('创建活动功能请通过 API 调用或后续完善表单页面');
+}
+
+// 检查登录状态显示创建按钮
+if (isLoggedIn()) {
+    document.getElementById('createBtn').style.display = 'inline-block';
+}
+
+loadActivities();
+</script>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}活动详情 - WaytoAGI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div id="activityDetail" style="max-width: 800px; margin: 2rem auto;">
+        <p style="text-align: center; color: #999; padding: 3rem;">加载中...</p>
+    </div>
+</div>
+
+<script>
+const activityId = {{ activity_id }};
+
+function getToken() {
+    return localStorage.getItem('access_token');
+}
+
+async function loadActivity() {
+    const el = document.getElementById('activityDetail');
+    try {
+        const res = await fetch(`/api/v1/activities/${activityId}`);
+        const data = await res.json();
+
+        if (data.code !== 200 || !data.data) {
+            el.innerHTML = '<p style="text-align: center; color: #e64340; padding: 3rem;">活动不存在或已删除</p>';
+            return;
+        }
+
+        const a = data.data;
+        const isLoggedIn = !!getToken();
+
+        el.innerHTML = `
+            <div style="background: white; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden;">
+                <div style="height: 240px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem;">
+                    ${a.cover_url ? `<img src="${a.cover_url}" style="width:100%;height:100%;object-fit:cover;">` : '📅'}
+                </div>
+                <div style="padding: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <h1 style="font-size: 1.75rem; color: #1a1a2e;">${a.title}</h1>
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 500;
+                            ${a.status === 'published' ? 'background: #e6f7e6; color: #07c160;' :
+                              a.status === 'pending' ? 'background: #fff7e6; color: #faad14;' :
+                              'background: #f0f0f0; color: #999;'}">
+                            ${statusText(a.status)}
+                        </span>
+                    </div>
+
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 1.5rem;">${a.description || '暂无活动描述'}</p>
+
+                    <div style="background: #f8f9fa; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div><strong>📍 地点：</strong>${a.location || '线上'}</div>
+                            <div><strong>👥 名额：</strong>${a.current_count}/${a.max_participants || '不限'}</div>
+                            <div><strong>🕐 开始：</strong>${formatDate(a.start_time)}</div>
+                            <div><strong>🕐 结束：</strong>${formatDate(a.end_time)}</div>
+                            <div><strong>📝 报名开始：</strong>${formatDate(a.registration_start)}</div>
+                            <div><strong>📝 报名截止：</strong>${formatDate(a.registration_end)}</div>
+                        </div>
+                    </div>
+
+                    ${a.sessions && a.sessions.length > 0 ? `
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="margin-bottom: 0.75rem;">活动场次</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            ${a.sessions.map(s => `
+                                <div style="padding: 0.75rem; background: #f8f9fa; border-radius: 0.5rem;">
+                                    <strong>${s.name}</strong> &nbsp;|&nbsp; ${formatDate(s.start_time)} ~ ${formatDate(s.end_time)}
+                                    ${s.location ? `&nbsp;|&nbsp; 📍 ${s.location}` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <div style="text-align: center;">
+                        ${a.status === 'published' && isLoggedIn ? `
+                            <button onclick="register()" style="padding: 0.75rem 3rem; background: #07c160; color: white; border: none; border-radius: 0.5rem; font-size: 1rem; cursor: pointer;">
+                                立即报名
+                            </button>
+                        ` : a.status === 'published' ? `
+                            <a href="/login" style="padding: 0.75rem 3rem; background: #667eea; color: white; border: none; border-radius: 0.5rem; font-size: 1rem; text-decoration: none; display: inline-block;">
+                                登录后报名
+                            </a>
+                        ` : `
+                            <button disabled style="padding: 0.75rem 3rem; background: #ccc; color: white; border: none; border-radius: 0.5rem; font-size: 1rem; cursor: not-allowed;">
+                                ${a.status === 'ended' ? '活动已结束' : '暂不可报名'}
+                            </button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        el.innerHTML = '<p style="text-align: center; color: #e64340; padding: 3rem;">加载失败，请刷新重试</p>';
+    }
+}
+
+function statusText(s) {
+    const map = { draft: '草稿', pending: '审核中', published: '报名中', ongoing: '进行中', ended: '已结束', cancelled: '已取消' };
+    return map[s] || s;
+}
+
+function formatDate(iso) {
+    if (!iso) return '待定';
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+async function register() {
+    const token = getToken();
+    if (!token) {
+        alert('请先登录');
+        location.href = '/login';
+        return;
+    }
+    try {
+        const res = await fetch(`/api/v1/activities/${activityId}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ form_data: {} })
+        });
+        const data = await res.json();
+        if (data.code === 200) {
+            alert('报名成功！');
+            loadActivity();
+        } else {
+            alert(data.message || '报名失败');
+        }
+    } catch (err) {
+        alert('网络错误，请稍后重试');
+    }
+}
+
+loadActivity();
+</script>
+{% endblock %}
