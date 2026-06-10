@@ -1,0 +1,455 @@
+<!doctype html>
+<!--
+  预览页：主平台首页（活动列表 · 时间轴形态）
+  临时文件：设计验证用，后续将拆分到 app/templates/base.html + app/templates/index.html
+  打开方式：直接双击该文件，或在浏览器中拖入
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WaytoAGI · 东莞活动报名</title>
+
+  <!-- Tailwind CSS（CDN 引入，仅 dev 预览；生产构建需替换为编译版） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // 自定义设计 token：极简黑白 + 蓝强调色
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            accent:    '#0066FF',
+            ink:       '#111111',
+            muted:     '#666666',
+            soft:      '#999999',
+            line:      '#EEEEEE',
+            hoverbg:   '#F7F7F7',
+          },
+          fontFamily: {
+            sans: ['ui-sans-serif', '-apple-system', 'BlinkMacSystemFont', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+          },
+          boxShadow: {
+            soft: '0 1px 3px rgba(0,0,0,0.06)',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Alpine.js：用于移动端导航展开、搜索框聚焦态 -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+    /* 极简：仅保留必要自定义样式，其他走 Tailwind 工具类 */
+    body { -webkit-font-smoothing: antialiased; }
+  </style>
+</head>
+
+<body class="bg-white text-ink font-sans">
+
+  <!-- ============ 顶部地区选择条（最顶上） ============ -->
+  <!-- 视觉策略：低对比度细条，定位图标 + 当前 region + 简短代号；下拉展示其他 region 灰度态 -->
+  <!-- 业务语义：首期仅服务东莞，其他 region 在 UI 灰度开放（PRD §4.3） -->
+  <div
+    class="border-b border-line bg-hoverbg/60"
+    x-data="{ regionOpen: false, currentRegion: 'DG' }"
+    @click.outside="regionOpen = false"
+  >
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-8 flex items-center justify-between text-xs">
+
+      <!-- 左侧：服务说明（首期固定文案） -->
+      <div class="hidden sm:flex items-center gap-2 text-soft">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-accent"></span>
+        <span>首期服务 · 东莞</span>
+      </div>
+
+      <!-- 右侧：地区下拉 -->
+      <div class="relative ml-auto">
+        <button
+          @click="regionOpen = !regionOpen"
+          class="flex items-center gap-1.5 text-soft hover:text-ink transition"
+          aria-haspopup="listbox"
+          :aria-expanded="regionOpen"
+        >
+          <!-- 定位图标 -->
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 10c0 7-8 12-8 12s-8-5-8-12a8 8 0 0 1 16 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span class="font-medium text-ink">东莞</span>
+          <span class="text-soft tracking-wider">DG</span>
+          <svg
+            class="w-3 h-3 transition-transform"
+            :class="{ 'rotate-180': regionOpen }"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          >
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </button>
+
+        <!-- 下拉菜单 -->
+        <div
+          x-show="regionOpen"
+          x-cloak
+          x-transition.opacity.duration.150ms
+          class="absolute right-0 top-full mt-1.5 w-48 bg-white border border-line rounded-lg shadow-soft py-1 z-50"
+        >
+          <!-- 东莞：当前可用 -->
+          <button
+            type="button"
+            class="w-full px-3 py-2 text-left hover:bg-hoverbg flex items-center justify-between text-sm"
+          >
+            <span class="flex items-center gap-2">
+              <span class="font-medium text-ink">东莞</span>
+              <span class="text-soft text-xs">Dongguan</span>
+            </span>
+            <span class="text-[10px] font-medium text-accent">当前</span>
+          </button>
+          <!-- 分隔线 -->
+          <div class="my-1 border-t border-line"></div>
+          <!-- 其他 region：灰度敬请期待 -->
+          <button
+            type="button"
+            disabled
+            class="w-full px-3 py-2 text-left flex items-center justify-between text-sm text-soft cursor-not-allowed"
+          >
+            <span class="flex items-center gap-2">
+              <span>深圳</span>
+              <span class="text-xs">Shenzhen</span>
+            </span>
+            <span class="text-[10px]">敬请期待</span>
+          </button>
+          <button
+            type="button"
+            disabled
+            class="w-full px-3 py-2 text-left flex items-center justify-between text-sm text-soft cursor-not-allowed"
+          >
+            <span class="flex items-center gap-2">
+              <span>上海</span>
+              <span class="text-xs">Shanghai</span>
+            </span>
+            <span class="text-[10px]">敬请期待</span>
+          </button>
+          <button
+            type="button"
+            disabled
+            class="w-full px-3 py-2 text-left flex items-center justify-between text-sm text-soft cursor-not-allowed"
+          >
+            <span class="flex items-center gap-2">
+              <span>北京</span>
+              <span class="text-xs">Beijing</span>
+            </span>
+            <span class="text-[10px]">敬请期待</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 顶部导航 ============ -->
+  <header
+    class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-line"
+    x-data="{ open: false }"
+  >
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+
+      <!-- 站点标识：使用站点自有 logo，图片含「W 图标 + WaytoAGI · 东莞」完整字样 -->
+      <a href="#" class="flex items-center shrink-0">
+        <img
+          src="static/images/logo.jpg"
+          alt="WaytoAGI · 东莞"
+          class="h-7 sm:h-8 w-auto"
+        >
+      </a>
+
+      <!-- 主要入口：活动 / 组织 / 我的报名 -->
+      <nav class="hidden md:flex items-center gap-7 text-sm">
+        <a href="#activities" class="text-ink font-medium">活动</a>
+        <a href="#" class="text-muted hover:text-ink transition">组织</a>
+        <a href="#" class="text-muted hover:text-ink transition">我的报名</a>
+      </nav>
+
+      <!-- 右侧：搜索 + 创建活动（仅组织者） + 登录态 -->
+      <div class="hidden md:flex items-center gap-2 ml-auto">
+        <div class="relative">
+          <input
+            type="search"
+            placeholder="搜索活动"
+            class="w-56 rounded-lg border border-line bg-white pl-8 pr-3 py-1.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+          >
+          <!-- 搜索图标 -->
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+          </svg>
+        </div>
+        <!-- 角色判断：仅组织成员/Owner/运营可见（mock：当前演示态展示） -->
+        <a href="#" class="rounded-lg bg-ink text-white text-sm px-3 py-1.5 hover:bg-accent transition">+ 创建活动</a>
+        <a href="#" class="rounded-lg border border-line text-sm px-3 py-1.5 hover:bg-hoverbg transition">登录</a>
+      </div>
+
+      <!-- 移动端：汉堡按钮 -->
+      <button
+        class="md:hidden ml-auto p-2 -mr-2"
+        @click="open = !open"
+        :aria-expanded="open"
+        aria-label="导航菜单"
+      >
+        <svg x-show="!open" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        <svg x-show="open" x-cloak class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 移动端：折叠菜单 -->
+    <div class="md:hidden border-t border-line" x-show="open" x-cloak>
+      <nav class="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-3 text-sm">
+        <a href="#activities" class="py-1.5">活动</a>
+        <a href="#" class="py-1.5 text-muted">组织</a>
+        <a href="#" class="py-1.5 text-muted">我的报名</a>
+        <input type="search" placeholder="搜索活动" class="rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:border-accent">
+        <a href="#" class="rounded-lg bg-ink text-white text-sm px-3 py-2 text-center">+ 创建活动</a>
+        <a href="#" class="rounded-lg border border-line text-sm px-3 py-2 text-center">登录</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ============ Hero（极简标题区） ============ -->
+  <section class="border-b border-line">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <p class="text-xs font-medium tracking-widest text-accent uppercase">Dongguan · WaytoAGI</p>
+      <h1 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">
+        东莞线下 <span class="text-accent">AGI 活动</span>
+      </h1>
+      <p class="mt-3 text-muted text-sm sm:text-base max-w-2xl">
+        关注 WaytoAGI 东莞最新 meetup、分享会、闭门讨论 —— 报名 · 签到 · 复盘 一站搞定。
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 主区：按月分组的时间轴 ============ -->
+  <main id="activities" class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-12">
+
+    <!-- 7 月：即将开始 -->
+    <section>
+      <header class="flex items-baseline justify-between mb-4">
+        <h2 class="text-xs uppercase tracking-widest text-soft">2026 年 7 月</h2>
+        <span class="text-xs text-soft">2 场活动</span>
+      </header>
+
+      <div class="space-y-4">
+        <!-- 活动 1 -->
+        <article class="group flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-xl border border-line hover:border-ink/30 hover:shadow-soft transition bg-white">
+          <a href="#" class="block sm:w-44 sm:shrink-0">
+            <div class="aspect-[3/2] rounded-lg bg-line overflow-hidden">
+              <!-- 封面占位：inline SVG，后续接入真实图 -->
+              <svg viewBox="0 0 200 133" class="w-full h-full" preserveAspectRatio="xMidYMid slice">
+                <rect width="200" height="133" fill="#F0F0F0"/>
+                <circle cx="60" cy="50" r="14" fill="#0066FF" opacity="0.18"/>
+                <rect x="84" y="40" width="80" height="6" rx="3" fill="#DCDCDC"/>
+                <rect x="84" y="54" width="50" height="6" rx="3" fill="#E5E5E5"/>
+                <rect x="20" y="90" width="160" height="6" rx="3" fill="#EBEBEB"/>
+                <rect x="20" y="104" width="120" height="6" rx="3" fill="#EFEFEF"/>
+              </svg>
+            </div>
+          </a>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start gap-2 flex-wrap">
+              <h3 class="text-base sm:text-lg font-semibold tracking-tight">
+                <a href="#" class="hover:text-accent transition">东莞 RAG 实战 meetup #07</a>
+              </h3>
+              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">即将开始</span>
+            </div>
+            <div class="mt-1.5 text-sm text-muted space-y-0.5">
+              <div>7 月 12 日（周六） 14:00 – 17:30</div>
+              <div>东莞市松山湖 · 国际创新创业社区 A 栋 3 楼</div>
+              <div>已报 86 / 120 · 候补开放</div>
+            </div>
+            <p class="mt-2 text-sm text-muted line-clamp-2">
+              本期围绕 RAG 系统的工程化实践展开，邀请 3 位嘉宾分享工业落地经验与踩坑记录。
+            </p>
+          </div>
+          <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
+            <a href="#" class="rounded-lg bg-ink text-white text-sm px-4 py-2 text-center hover:bg-accent transition">立即报名</a>
+            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看详情</a>
+          </div>
+        </article>
+
+        <!-- 活动 2 -->
+        <article class="group flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-xl border border-line hover:border-ink/30 hover:shadow-soft transition bg-white">
+          <a href="#" class="block sm:w-44 sm:shrink-0">
+            <div class="aspect-[3/2] rounded-lg bg-line overflow-hidden">
+              <svg viewBox="0 0 200 133" class="w-full h-full" preserveAspectRatio="xMidYMid slice">
+                <rect width="200" height="133" fill="#F2F2F2"/>
+                <path d="M0 100 L60 70 L120 95 L200 60 L200 133 L0 133 Z" fill="#DCDCDC"/>
+                <circle cx="160" cy="40" r="10" fill="#0066FF" opacity="0.22"/>
+              </svg>
+            </div>
+          </a>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start gap-2 flex-wrap">
+              <h3 class="text-base sm:text-lg font-semibold tracking-tight">
+                <a href="#" class="hover:text-accent transition">Agent 闭门讨论 · 邀请制</a>
+              </h3>
+              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">即将开始</span>
+              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-ink/10 text-ink">邀请制</span>
+            </div>
+            <div class="mt-1.5 text-sm text-muted space-y-0.5">
+              <div>7 月 26 日（周六） 15:00 – 18:00</div>
+              <div>南城 · 汇一城 B 座 18 楼 路演厅</div>
+              <div>白名单 24 / 30</div>
+            </div>
+            <p class="mt-2 text-sm text-muted line-clamp-2">
+              小范围技术交流，仅限受邀者；议题方向：Multi-Agent 协作框架与记忆机制。
+            </p>
+          </div>
+          <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
+            <a href="#" class="rounded-lg bg-ink text-white text-sm px-4 py-2 text-center hover:bg-accent transition">申请邀请</a>
+            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看详情</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 6 月：已结束 -->
+    <section>
+      <header class="flex items-baseline justify-between mb-4">
+        <h2 class="text-xs uppercase tracking-widest text-soft">2026 年 6 月</h2>
+        <span class="text-xs text-soft">2 场活动</span>
+      </header>
+
+      <div class="space-y-4">
+        <!-- 活动 3 -->
+        <article class="group flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-xl border border-line hover:border-ink/30 hover:shadow-soft transition bg-white">
+          <a href="#" class="block sm:w-44 sm:shrink-0">
+            <div class="aspect-[3/2] rounded-lg bg-line overflow-hidden">
+              <svg viewBox="0 0 200 133" class="w-full h-full" preserveAspectRatio="xMidYMid slice">
+                <rect width="200" height="133" fill="#EEEEEE"/>
+                <rect x="30" y="35" width="50" height="60" rx="4" fill="#D5D5D5"/>
+                <rect x="90" y="35" width="50" height="60" rx="4" fill="#0066FF" opacity="0.18"/>
+                <rect x="150" y="35" width="20" height="60" rx="4" fill="#D5D5D5"/>
+              </svg>
+            </div>
+          </a>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start gap-2 flex-wrap">
+              <h3 class="text-base sm:text-lg font-semibold tracking-tight">
+                <a href="#" class="hover:text-accent transition">多模态大模型应用分享会</a>
+              </h3>
+              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-soft/15 text-soft">已结束</span>
+            </div>
+            <div class="mt-1.5 text-sm text-muted space-y-0.5">
+              <div>6 月 14 日（周六） 14:00 – 17:00</div>
+              <div>东莞市松山湖 · 国际创新创业社区 A 栋 3 楼</div>
+              <div>实到 92 / 100 · 签到率 92%</div>
+            </div>
+            <p class="mt-2 text-sm text-muted line-clamp-2">
+              围绕图文理解、视频生成、跨模态对齐三个方向，邀请社区一线工程师分享。
+            </p>
+          </div>
+          <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
+            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</a>
+            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">下载资料</a>
+          </div>
+        </article>
+
+        <!-- 活动 4 -->
+        <article class="group flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-xl border border-line hover:border-ink/30 hover:shadow-soft transition bg-white">
+          <a href="#" class="block sm:w-44 sm:shrink-0">
+            <div class="aspect-[3/2] rounded-lg bg-line overflow-hidden">
+              <svg viewBox="0 0 200 133" class="w-full h-full" preserveAspectRatio="xMidYMid slice">
+                <rect width="200" height="133" fill="#F0F0F0"/>
+                <circle cx="100" cy="66" r="40" fill="none" stroke="#0066FF" stroke-width="1.5" opacity="0.4"/>
+                <circle cx="100" cy="66" r="20" fill="none" stroke="#0066FF" stroke-width="1.5" opacity="0.6"/>
+                <circle cx="100" cy="66" r="3" fill="#0066FF"/>
+              </svg>
+            </div>
+          </a>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start gap-2 flex-wrap">
+              <h3 class="text-base sm:text-lg font-semibold tracking-tight">
+                <a href="#" class="hover:text-accent transition">东莞周会 #26 · LLM 微调实战</a>
+              </h3>
+              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-soft/15 text-soft">已结束</span>
+            </div>
+            <div class="mt-1.5 text-sm text-muted space-y-0.5">
+              <div>6 月 28 日（周六） 14:00 – 17:30</div>
+              <div>南城 · 汇一城 B 座 18 楼 路演厅</div>
+              <div>实到 45 / 60 · 签到率 75%</div>
+            </div>
+            <p class="mt-2 text-sm text-muted line-clamp-2">
+              LoRA / QLoRA 落地经验与资源占用权衡；现场跑通 7B 模型微调 demo。
+            </p>
+          </div>
+          <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
+            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</a>
+            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">下载资料</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 5 月：已结束 -->
+    <section>
+      <header class="flex items-baseline justify-between mb-4">
+        <h2 class="text-xs uppercase tracking-widest text-soft">2026 年 5 月</h2>
+        <span class="text-xs text-soft">1 场活动</span>
+      </header>
+
+      <div class="space-y-4">
+        <!-- 活动 5 -->
+        <article class="group flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-xl border border-line hover:border-ink/30 hover:shadow-soft transition bg-white">
+          <a href="#" class="block sm:w-44 sm:shrink-0">
+            <div class="aspect-[3/2] rounded-lg bg-line overflow-hidden">
+              <svg viewBox="0 0 200 133" class="w-full h-full" preserveAspectRatio="xMidYMid slice">
+                <rect width="200" height="133" fill="#F3F3F3"/>
+                <path d="M30 100 L70 60 L110 85 L150 50 L180 80" fill="none" stroke="#0066FF" stroke-width="2" opacity="0.5"/>
+                <circle cx="30" cy="100" r="3" fill="#0066FF"/>
+                <circle cx="70" cy="60" r="3" fill="#0066FF"/>
+                <circle cx="110" cy="85" r="3" fill="#0066FF"/>
+                <circle cx="150" cy="50" r="3" fill="#0066FF"/>
+              </svg>
+            </div>
+          </a>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start gap-2 flex-wrap">
+              <h3 class="text-base sm:text-lg font-semibold tracking-tight">
+                <a href="#" class="hover:text-accent transition">AGI 入门分享会 · 东莞站</a>
+              </h3>
+              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-soft/15 text-soft">已结束</span>
+            </div>
+            <div class="mt-1.5 text-sm text-muted space-y-0.5">
+              <div>5 月 17 日（周六） 14:00 – 17:00</div>
+              <div>东莞市松山湖 · 国际创新创业社区 A 栋 3 楼</div>
+              <div>实到 120 / 150 · 签到率 80%</div>
+            </div>
+            <p class="mt-2 text-sm text-muted line-clamp-2">
+              面向社区新成员的入门场，覆盖 LLM 基础概念、主流产品矩阵与本地工具链。
+            </p>
+          </div>
+          <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
+            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ 页脚 ============ -->
+  <footer class="border-t border-line mt-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 text-xs text-soft flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+      <div>© 2026 WaytoAGI · 东莞 社区 · 由社区志愿者维护</div>
+      <div class="flex gap-4">
+        <a href="#" class="hover:text-ink transition">关于我们</a>
+        <a href="#" class="hover:text-ink transition">联系</a>
+        <a href="#" class="hover:text-ink transition">隐私政策</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
