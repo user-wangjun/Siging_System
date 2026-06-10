@@ -75,9 +75,37 @@ git worktree add ../Siging_System-feature-xxx -b feature/xxx develop
 - 提 Bug：用 Bug Report 模板
 - 任务拆解：用 Task 模板，关联 PRD 章节
 
+## 技术栈（v0.2 锁定）
+
+| 层 | 选型 | 说明 |
+| --- | --- | --- |
+| 运行时 | Python 3.11+ | 团队主语言 |
+| Web 框架 | Flask 3.x + Jinja2 | 单体应用，模板原生 |
+| 数据库 | **MySQL 8.0** | 团队运维熟悉，InnoDB 事务稳定 |
+| 数据库驱动 | **PyMySQL** | 纯 Python，零原生依赖，**首期不引入 SQLAlchemy ORM** |
+| 表单 | Flask-WTF（WTForms） | CSRF 内置，模板友好 |
+| 静态资源 | 本地 `static/` | 用户上传走 `static/uploads/` |
+| WSGI | gunicorn（Linux）/ waitress（Windows） | 跨平台 |
+| 测试 | pytest + pytest-flask | TDD 强制 |
+| 代码规范 | Ruff（lint + format）+ mypy | 单工具替代原 ESLint+Prettier 角色 |
+| 端口 | **8080** | 绑定后不变 |
+
+> **决策记录（2026-06-08，北葵确认）**：
+> - **数据库用 mysql** —— 全栈统一 MySQL 8.0。
+> - **Python 用 pymysql 库进行链接** —— 数据访问层**仅**使用 PyMySQL 直连 + 手写 SQL（封装在 `app/db/` 工具模块），**不引入 SQLAlchemy ORM**。Schema 变更走 `sql/` 目录下的版本化脚本 + 回滚脚本。
+>
+> 与 PRD §7.2、[project_rules.md §4](./.trae/rules/project_rules.md) 保持一致；如有调整需经 4 人团队评审。
+
 ## 代码风格
 
-- 前端：ESLint + Prettier（项目初始化时配置）
-- 后端：ESLint + Prettier（NestJS 默认）
+- 后端（Python）：Ruff（lint + format）+ mypy
+- 前端：Tailwind CSS（CDN）+ Alpine.js（CDN），首期不引入构建工具
 - 命名：驼峰命名法（用户约定）
 - 注释：解释「为什么」而非「做什么」；函数级中文注释
+- 函数创建与调用必须**参数名一致 + 参数完整**
+
+## 快速链接
+
+- 📄 [PRD v0.2](docs/design/event-registration-prd.md)
+- 📋 [Flask 迁移计划 v1.0](docs/plans/flask-migration.md)
+- 📜 [项目 AI 规则](.trae/rules/project_rules.md)

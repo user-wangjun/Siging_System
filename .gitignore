@@ -1,36 +1,6 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-.yarn/cache
-.yarn/build-state.yml
-.yarn/install-state.gz
-
-# Build outputs
-dist/
-build/
-out/
-*.tsbuildinfo
-.next/
-.nuxt/
-.cache/
-.turbo/
-
-# Coverage
-coverage/
-*.lcov
-.nyc_output/
-
-# Env / secrets
+# =========================
+# Env / secrets（通用，跨栈保留）
+# =========================
 .env
 .env.local
 .env.*.local
@@ -39,7 +9,16 @@ coverage/
 secrets/
 config/local.json
 
-# IDE / OS
+# 通用日志（应用日志、第三方库日志）
+logs/
+*.log
+
+# 覆盖率报告（Python 区块 .coverage 已覆盖，此处保留 lcov 格式）
+*.lcov
+
+# =========================
+# IDE / OS（通用，跨栈保留）
+# =========================
 .idea/
 .vscode/*
 !.vscode/settings.json
@@ -49,10 +28,6 @@ Thumbs.db
 *.swp
 *.swo
 
-# Prisma (keep migrations)
-prisma/*.db
-prisma/*.db-journal
-
 # Worktrees
 .worktrees/
 
@@ -60,3 +35,78 @@ prisma/*.db-journal
 # 整体忽略 .trae/，但保留 rules/（团队 AI 协作规则需要入库）
 .trae/
 !.trae/rules/
+
+# =========================
+# Python（v0.2 锁定）
+# =========================
+# 字节码与编译产物
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 构建 / 打包产物
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+.python-version
+.python-version.txt
+
+# 工具缓存（mypy / ruff / pytest / coverage / tox）
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache/
+.pyre/
+.pytype/
+
+# Flask 应用实例目录（运行时配置、sqlite、上传等）
+instance/
+.webassets-cache
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+profile_default/
+
+# =========================
+# 数据库本地数据（不入库）
+# =========================
+# MySQL 数据卷（docker-compose 启动的本地 MySQL 数据）
+.mysql-data/
+data/
+*.sqlite
+*.sqlite3
+*.db
+
+# =========================
+# 用户上传与本地日志（不入库）
+# =========================
+# Flask 应用 static/uploads/ 下的运行时上传产物（保留 .gitkeep 占位文件）
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+# Python 专属日志（顶部已有通用 logs/*.log，此处补全）
+*.log.local

@@ -44,8 +44,7 @@
 | Web 框架 | **Flask 3.x** | 用户指定；单体简单、模板原生 |
 | 模板 | **Jinja2**（Flask 内置） | 用户指定，无需前后端分离 |
 | 数据库 | **MySQL 8**（docker） | 用户指定；运维简单、广泛使用 |
-| 驱动 | **PyMySQL** | 用户指定；纯 Python，无 C 扩展依赖 |
-| ORM | **Flask-SQLAlchemy 3.x** | 团队熟悉、迁移工具有 `flask-migrate`（Alembic） |
+| 数据库驱动 | **PyMySQL** | 用户指定；纯 Python，无 C 扩展依赖（首期**不引入 SQLAlchemy ORM**） |
 | 登录 | **Flask-Login + session** | 假账号阶段够用，后续接入真实登录只改 `auth/` 蓝图 |
 | 配置 | **python-dotenv + .env** | 12-factor；密钥不入库 |
 | 表单 | **Flask-WTF**（WTForms） | 简单表单 + CSRF 防护 |
@@ -54,7 +53,9 @@
 | 测试 | **pytest + pytest-flask** | 行业标准 |
 | 容器 | **docker-compose**（仅 MySQL 服务） | 一键拉起本地库；应用本身 `flask run` |
 
-> **关于 ORM 的补充说明**：用户指定「用 pymysql 库进行链接」。PyMySQL 是 DB-API 驱动，本身不是 ORM。本计划用 `PyMySQL` 作为驱动 + SQLAlchemy 作为 ORM，两者并存不冲突。如果团队坚持「不要 ORM，纯 SQL」，请在 PR Review 时指出，我会删掉 SQLAlchemy 仅留 PyMySQL。
+> **决策记录（2026-06-08，北葵确认）**：
+> - **数据库用 mysql** —— 全栈统一 MySQL 8.0，docker-compose 拉起。
+> - **Python 用 pymysql 库进行链接** —— 数据访问层**仅**使用 PyMySQL 直连 + 手写 SQL（在 `app/db/` 工具模块中封装连接池与查询助手），**首期不引入 SQLAlchemy ORM，也不引入 flask-migrate**。Schema 变更通过 `sql/` 目录下的版本化脚本 + 回滚脚本手动管理。
 
 ---
 
@@ -65,7 +66,7 @@
 ├── app/
 │   ├── __init__.py            # create_app 工厂
 │   ├── config.py              # 配置类（Dev / Test / Prod）
-│   ├── extensions.py          # db / login_manager 等扩展
+│   ├── extensions.py          # login_manager 等 Flask 扩展（db 由 app/db/ 自行管理，不引入 SQLAlchemy）
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── user.py            # User 模型
@@ -92,7 +93,8 @@
 │   └── static/
 │       ├── css/style.css
 │       └── images/
-├── migrations/                # flask-migrate 输出
+├── sql/                      # 数据库 schema 脚本（手写 SQL，按版本命名 sql/V1__init.sql 等）
+├── sql/rollback/             # 回滚脚本（与 V* 一一对应）
 ├── tests/
 │   ├── conftest.py
 │   ├── test_auth.py
@@ -186,7 +188,7 @@ tests/ .......                                                       [100%]
 ## 7. 验收清单
 
 - [ ] `docker compose up -d` 能拉起 MySQL 8
-- [ ] `flask db upgrade` 能创建所有表
+- [ ] `mysql < sql/V1__init.sql`（或 `python sql/init_db.py`）能创建所有表
 - [ ] `flask run --port=8080` 启动后浏览器能打开 http://localhost:8080
 - [ ] 假账号 admin/admin 能登录
 - [ ] 能创建、编辑、删除活动
@@ -206,7 +208,7 @@ tests/ .......                                                       [100%]
 | --- | --- |
 | 团队成员本机已装了 MySQL 占用 3306 | docker-compose 暴露端口改为 `3307:3306`，.env.example 同步 |
 | pymysql 编码问题 | 连接串加 `?charset=utf8mb4` |
-| flask-migrate 升级失败 | 提供 `flask db stamp head` + `flask db migrate` 重置流程 |
+| SQL 脚本升级失败 | 保留 `sql/V*__init.sql` 版本快照，对应 `sql/rollback/V*_down.sql` 回滚 |
 | 大文件入 Git | `.gitignore` 增加 `__pycache__/` `.env` `instance/` `.venv/` |
 | 端口 8080 被占用 | `flask run --port=8080` 启动前 `netstat -ano | findstr :8080` 检测 |
 
