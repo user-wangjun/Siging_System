@@ -39,6 +39,145 @@
   <!-- Alpine.js：用于移动端导航展开、搜索框聚焦态 -->
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+  <!-- 登录/注册弹窗状态：作为顶层 x-data 函数返回，避免 alpine:init 时序问题 -->
+  <script>
+    function authModal() {
+      return {
+        // ===== 弹窗状态 =====
+        loginOpen: false,
+        mode: 'login',         // 'login' | 'register'
+        tab: 'code',           // 登录页 tab：'code' | 'password'
+
+        // 验证码倒计时（登录/注册共用）
+        countdown: 0,
+        countdownTimer: null,
+
+        // 表单数据：拆字段便于局部校验与重置
+        form: {
+          account: '',            // 密码登录账号（手机号/邮箱）
+          password: '',           // 密码登录密码
+          remember: false,        // 记住我
+          phone: '',              // 验证码登录手机号
+          code: '',               // 验证码登录验证码
+          regPhone: '',           // 注册手机号
+          regCode: '',            // 注册验证码
+          regPassword: '',        // 注册密码
+          regPasswordConfirm: '', // 确认密码
+          regEmail: '',           // 注册邮箱（选填）
+        },
+
+        // 顶部 Toast 提示
+        toast: { show: false, text: '', type: 'info' },
+
+        // ===== 弹窗控制 =====
+        openLogin() {
+          this.loginOpen = true;
+          this.mode = 'login';
+          this.tab = 'code';
+          // 锁定 body 滚动，避免移动端穿透
+          document.body.style.overflow = 'hidden';
+        },
+        closeLogin() {
+          this.loginOpen = false;
+          document.body.style.overflow = '';
+          // 关闭动画结束后再清空数据，避免动画过程中表单消失
+          setTimeout(() => this.resetForm(), 200);
+        },
+        switchToRegister() { this.mode = 'register'; },
+        switchToLogin()    { this.mode = 'login'; },
+        switchTab(tab)     { this.tab = tab; },
+
+        resetForm() {
+          this.form = {
+            account: '', password: '', remember: false,
+            phone: '', code: '',
+            regPhone: '', regCode: '', regPassword: '', regPasswordConfirm: '', regEmail: '',
+          };
+          this.countdown = 0;
+          if (this.countdownTimer) {
+            clearInterval(this.countdownTimer);
+            this.countdownTimer = null;
+          }
+        },
+
+        // ===== 校验工具 =====
+        validatePhone(phone) { return /^1[3-9]\d{9}$/.test(phone); },
+        validateEmail(email) {
+          if (!email) return true; // 邮箱选填
+          return /^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(email);
+        },
+        maskPhone(phone) {
+          return phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2');
+        },
+
+        // ===== 验证码倒计时 =====
+        sendCode(target) {
+          // target: 'login' | 'register'
+          const phone = target === 'login' ? this.form.phone : this.form.regPhone;
+          if (!this.validatePhone(phone)) {
+            return this.showToast('请输入有效的手机号', 'error');
+          }
+          if (this.countdown > 0) return; // 倒计时未结束前忽略
+          this.countdown = 60;
+          this.countdownTimer = setInterval(() => {
+            this.countdown -= 1;
+            if (this.countdown <= 0 && this.countdownTimer) {
+              clearInterval(this.countdownTimer);
+              this.countdownTimer = null;
+            }
+          }, 1000);
+          this.showToast(`验证码已发送至 ${this.maskPhone(phone)}（Mock）`, 'success');
+        },
+
+        // ===== 提交逻辑（Mock：仅前端校验，不发请求） =====
+        submitLogin() {
+          if (this.tab === 'password') {
+            if (!this.form.account) return this.showToast('请输入账号', 'error');
+            if (!this.form.password || this.form.password.length < 6) {
+              return this.showToast('密码至少 6 位', 'error');
+            }
+            this.showToast('登录成功（Mock）', 'success');
+            this.closeLogin();
+          } else {
+            if (!this.validatePhone(this.form.phone)) {
+              return this.showToast('请输入有效的手机号', 'error');
+            }
+            if (!this.form.code || this.form.code.length < 4) {
+              return this.showToast('请输入验证码', 'error');
+            }
+            this.showToast('登录成功（Mock，未注册手机号将自动注册）', 'success');
+            this.closeLogin();
+          }
+        },
+        submitRegister() {
+          if (!this.validatePhone(this.form.regPhone)) {
+            return this.showToast('请输入有效的手机号', 'error');
+          }
+          if (!this.form.regCode) {
+            return this.showToast('请输入手机验证码', 'error');
+          }
+          if (!this.form.regPassword || this.form.regPassword.length < 6) {
+            return this.showToast('密码至少 6 位', 'error');
+          }
+          if (this.form.regPassword !== this.form.regPasswordConfirm) {
+            return this.showToast('两次密码输入不一致', 'error');
+          }
+          if (!this.validateEmail(this.form.regEmail)) {
+            return this.showToast('邮箱格式不正确', 'error');
+          }
+          this.showToast('注册成功（Mock）', 'success');
+          this.closeLogin();
+        },
+
+        // ===== Toast =====
+        showToast(text, type = 'info') {
+          this.toast = { show: true, text, type };
+          setTimeout(() => { this.toast.show = false; }, 2500);
+        },
+      };
+    }
+  </script>
+
   <style>
     [x-cloak] { display: none !important; }
     /* 极简：仅保留必要自定义样式，其他走 Tailwind 工具类 */
@@ -46,7 +185,7 @@
   </style>
 </head>
 
-<body class="bg-white text-ink font-sans">
+<body class="bg-white text-ink font-sans" x-data="authModal()">
 
   <!-- ============ 顶部导航（地区选择内联在 header 栏） ============ -->
   <!-- 视觉策略：移除顶部独立细条，地区按钮并入 header 第一行，与 nav 同高 -->
@@ -194,7 +333,11 @@
         </div>
         <!-- 角色判断：仅组织成员/Owner/运营可见（mock：当前演示态展示） -->
         <a href="#" class="rounded-lg bg-ink text-white text-sm px-3 py-1.5 hover:bg-accent transition">+ 创建活动</a>
-        <a href="#" class="rounded-lg border border-line text-sm px-3 py-1.5 hover:bg-hoverbg transition">登录</a>
+        <button
+          type="button"
+          @click="openLogin()"
+          class="rounded-lg border border-line text-sm px-3 py-1.5 hover:bg-hoverbg transition"
+        >登录</button>
       </div>
 
       <!-- 移动端：汉堡按钮 -->
@@ -221,7 +364,11 @@
         <a href="#" class="py-1.5 text-muted">我的报名</a>
         <input type="search" placeholder="搜索活动" class="rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:border-accent">
         <a href="#" class="rounded-lg bg-ink text-white text-sm px-3 py-2 text-center">+ 创建活动</a>
-        <a href="#" class="rounded-lg border border-line text-sm px-3 py-2 text-center">登录</a>
+        <button
+          type="button"
+          @click="open = false; openLogin()"
+          class="rounded-lg border border-line text-sm px-3 py-2 text-center"
+        >登录</button>
       </nav>
     </div>
   </header>
@@ -459,6 +606,311 @@
       </div>
     </div>
   </footer>
+
+  <!-- ============ 登录 / 注册 弹窗 ============ -->
+  <!-- 临时预览组件：将来从 preview.html 抽取到独立 partial 复用 -->
+  <div
+    x-show="loginOpen"
+    x-cloak
+    x-transition.opacity.duration.200ms
+    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm"
+    @keydown.escape.window="closeLogin()"
+  >
+    <div
+      @click.outside="closeLogin()"
+      x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0 scale-95"
+      x-transition:enter-end="opacity-100 scale-100"
+      class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden"
+    >
+      <!-- 头部 -->
+      <div class="relative px-6 pt-6">
+        <!-- 登录模式：Tab 切换 -->
+        <template x-if="mode === 'login'">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-ink">登录</h2>
+              <button
+                type="button"
+                @click="closeLogin()"
+                class="text-soft hover:text-ink transition -mr-1 -mt-1 p-1"
+                aria-label="关闭"
+              >
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 6l12 12M18 6L6 18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="flex border-b border-line" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                @click="switchTab('code')"
+                :class="tab === 'code' ? 'text-ink font-medium border-b-2 border-accent -mb-px' : 'text-muted hover:text-ink'"
+                class="flex-1 pb-3 text-sm transition"
+              >验证码登录</button>
+              <button
+                type="button"
+                role="tab"
+                @click="switchTab('password')"
+                :class="tab === 'password' ? 'text-ink font-medium border-b-2 border-accent -mb-px' : 'text-muted hover:text-ink'"
+                class="flex-1 pb-3 text-sm transition"
+              >密码登录</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- 注册模式：标题 + 必填说明 -->
+        <template x-if="mode === 'register'">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h2 class="text-lg font-semibold text-ink">注册账号</h2>
+              <button
+                type="button"
+                @click="closeLogin()"
+                class="text-soft hover:text-ink transition -mr-1 -mt-1 p-1"
+                aria-label="关闭"
+              >
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 6l12 12M18 6L6 18"/>
+                </svg>
+              </button>
+            </div>
+            <p class="text-xs text-soft">
+              <span class="text-accent">*</span> 为必填项；邮箱可在「个人资料」中补充
+            </p>
+          </div>
+        </template>
+      </div>
+
+      <!-- 表单区 -->
+      <div class="px-6 pb-6 pt-4">
+
+        <!-- 验证码登录 -->
+        <form
+          x-show="mode === 'login' && tab === 'code'"
+          @submit.prevent="submitLogin()"
+          class="space-y-3"
+        >
+          <div>
+            <label class="block text-xs text-muted mb-1.5">手机号</label>
+            <input
+              x-model="form.phone"
+              type="tel"
+              maxlength="11"
+              placeholder="请输入手机号"
+              autocomplete="tel"
+              class="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+            >
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1.5">验证码</label>
+            <div class="flex gap-2">
+              <input
+                x-model="form.code"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="6 位短信验证码"
+                autocomplete="one-time-code"
+                class="flex-1 rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+              >
+              <button
+                type="button"
+                @click="sendCode('login')"
+                :disabled="countdown > 0"
+                class="shrink-0 px-3 rounded-lg border border-line text-sm text-accent hover:bg-hoverbg transition disabled:text-soft disabled:cursor-not-allowed disabled:hover:bg-white"
+              >
+                <span x-text="countdown > 0 ? `${countdown}s 后重试` : '获取验证码'"></span>
+              </button>
+            </div>
+          </div>
+          <p class="text-xs text-soft leading-relaxed">
+            未注册的手机号将直接注册并登录
+          </p>
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-ink text-white text-sm py-2.5 hover:bg-accent transition"
+          >登录</button>
+          <p class="text-center text-xs text-muted">
+            已有账号可直接登录 · 没有账号？
+            <button
+              type="button"
+              @click="switchToRegister()"
+              class="text-accent hover:underline"
+            >注册账号</button>
+          </p>
+        </form>
+
+        <!-- 密码登录 -->
+        <form
+          x-show="mode === 'login' && tab === 'password'"
+          @submit.prevent="submitLogin()"
+          class="space-y-3"
+        >
+          <div>
+            <label class="block text-xs text-muted mb-1.5">账号</label>
+            <input
+              x-model="form.account"
+              type="text"
+              placeholder="手机号 / 邮箱"
+              autocomplete="username"
+              class="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+            >
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1.5">密码</label>
+            <input
+              x-model="form.password"
+              type="password"
+              placeholder="请输入密码"
+              autocomplete="current-password"
+              class="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+            >
+          </div>
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+              <input
+                type="checkbox"
+                x-model="form.remember"
+                class="rounded border-line text-accent focus:ring-accent/20"
+              >
+              <span>记住我</span>
+            </label>
+            <button
+              type="button"
+              class="text-xs text-muted hover:text-accent transition"
+            >忘记密码？</button>
+          </div>
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-ink text-white text-sm py-2.5 hover:bg-accent transition"
+          >登录</button>
+          <p class="text-center text-xs text-muted">
+            没有账号？
+            <button
+              type="button"
+              @click="switchToRegister()"
+              class="text-accent hover:underline"
+            >注册账号</button>
+          </p>
+        </form>
+
+        <!-- 注册 -->
+        <form
+          x-show="mode === 'register'"
+          @submit.prevent="submitRegister()"
+          class="space-y-3"
+        >
+          <div>
+            <label class="block text-xs text-muted mb-1.5">
+              手机号 <span class="text-accent">*</span>
+            </label>
+            <input
+              x-model="form.regPhone"
+              type="tel"
+              maxlength="11"
+              placeholder="请输入手机号"
+              autocomplete="tel"
+              class="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+            >
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1.5">
+              手机验证码 <span class="text-accent">*</span>
+            </label>
+            <div class="flex gap-2">
+              <input
+                x-model="form.regCode"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="6 位短信验证码"
+                autocomplete="one-time-code"
+                class="flex-1 rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+              >
+              <button
+                type="button"
+                @click="sendCode('register')"
+                :disabled="countdown > 0"
+                class="shrink-0 px-3 rounded-lg border border-line text-sm text-accent hover:bg-hoverbg transition disabled:text-soft disabled:cursor-not-allowed disabled:hover:bg-white"
+              >
+                <span x-text="countdown > 0 ? `${countdown}s 后重试` : '获取验证码'"></span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1.5">
+              密码 <span class="text-accent">*</span>
+            </label>
+            <input
+              x-model="form.regPassword"
+              type="password"
+              placeholder="至少 6 位"
+              autocomplete="new-password"
+              class="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+            >
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1.5">
+              确认密码 <span class="text-accent">*</span>
+            </label>
+            <input
+              x-model="form.regPasswordConfirm"
+              type="password"
+              placeholder="再次输入密码"
+              autocomplete="new-password"
+              class="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+            >
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1.5">
+              邮箱 <span class="text-soft text-[10px] ml-1">（选填，个人资料可补充）</span>
+            </label>
+            <input
+              x-model="form.regEmail"
+              type="email"
+              placeholder="example@waytoagi.com"
+              autocomplete="email"
+              class="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition"
+            >
+          </div>
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-ink text-white text-sm py-2.5 hover:bg-accent transition"
+          >注册并登录</button>
+          <p class="text-center text-xs text-muted">
+            已有账号？
+            <button
+              type="button"
+              @click="switchToLogin()"
+              class="text-accent hover:underline"
+            >返回登录</button>
+          </p>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 顶部 Toast 提示 ============ -->
+  <div
+    x-show="toast.show"
+    x-cloak
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0 -translate-y-2"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100 translate-y-0"
+    x-transition:leave-end="opacity-0 -translate-y-2"
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-lg shadow-soft text-sm"
+    :class="{
+      'bg-ink text-white': toast.type === 'info',
+      'bg-accent text-white': toast.type === 'success',
+      'bg-red-500 text-white': toast.type === 'error',
+    }"
+    x-text="toast.text"
+  ></div>
 
 </body>
 </html>
