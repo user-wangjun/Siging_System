@@ -48,37 +48,57 @@
 
 <body class="bg-white text-ink font-sans">
 
-  <!-- ============ 顶部地区选择条（最顶上） ============ -->
-  <!-- 视觉策略：低对比度细条，定位图标 + 当前 region + 简短代号；下拉展示其他 region 灰度态 -->
+  <!-- ============ 顶部导航（地区选择内联在 header 栏） ============ -->
+  <!-- 视觉策略：移除顶部独立细条，地区按钮并入 header 第一行，与 nav 同高 -->
   <!-- 业务语义：首期仅服务东莞，其他 region 在 UI 灰度开放（PRD §4.3） -->
-  <div
-    class="border-b border-line bg-hoverbg/60"
-    x-data="{ regionOpen: false, currentRegion: 'DG' }"
+  <header
+    class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-line"
+    x-data="{
+      open: false,
+      regionOpen: false,
+      currentRegion: '东莞',
+      expandedProvince: '广东省',
+      provinces: [
+        { name: '广东省', cities: ['东莞', '深圳', '广州'] },
+        { name: '江苏省', cities: ['苏州', '南京'] },
+        { name: '北京市', cities: ['北京'] },
+        { name: '上海市', cities: ['上海'] }
+      ]
+    }"
     @click.outside="regionOpen = false"
   >
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-8 flex items-center justify-between text-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
 
-      <!-- 左侧：服务说明（首期固定文案） -->
-      <div class="hidden sm:flex items-center gap-2 text-soft">
-        <span class="inline-block w-1.5 h-1.5 rounded-full bg-accent"></span>
-        <span>首期服务 · 东莞</span>
-      </div>
+      <!-- 站点标识：WaytoAGI 主品牌 + 碳基社区 合作品牌并列 -->
+      <a href="#" class="flex items-center shrink-0">
+        <img
+          src="static/images/logo.jpg"
+          alt="WaytoAGI · 东莞"
+          class="h-7 sm:h-8 w-auto"
+        >
+      </a>
+      <a href="#" class="flex items-center shrink-0 pt-[5px]">
+        <img
+          src="static/images/碳基社区.png"
+          alt="碳基社区"
+          class="h-12 sm:h-14 w-auto"
+        >
+      </a>
 
-      <!-- 右侧：地区下拉 -->
-      <div class="relative ml-auto">
+      <!-- 地区选择：紧跟 logo，所有屏幕可见；mobile 下隐藏 DG 代号以省横向空间 -->
+      <div class="relative shrink-0">
         <button
           @click="regionOpen = !regionOpen"
           class="flex items-center gap-1.5 text-soft hover:text-ink transition"
           aria-haspopup="listbox"
           :aria-expanded="regionOpen"
         >
-          <!-- 定位图标 -->
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20 10c0 7-8 12-8 12s-8-5-8-12a8 8 0 0 1 16 0z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
           <span class="font-medium text-ink">东莞</span>
-          <span class="text-soft tracking-wider">DG</span>
+          <span class="hidden sm:inline text-soft tracking-wider">DG</span>
           <svg
             class="w-3 h-3 transition-transform"
             :class="{ 'rotate-180': regionOpen }"
@@ -88,85 +108,74 @@
           </svg>
         </button>
 
-        <!-- 下拉菜单 -->
+        <!-- 下拉菜单：左对齐下拉，与按钮同列起 -->
         <div
           x-show="regionOpen"
           x-cloak
           x-transition.opacity.duration.150ms
-          class="absolute right-0 top-full mt-1.5 w-48 bg-white border border-line rounded-lg shadow-soft py-1 z-50"
+          class="absolute left-0 top-full mt-1.5 w-60 bg-white border border-line rounded-lg shadow-soft py-1 z-50"
         >
-          <!-- 东莞：当前可用 -->
+          <!-- 顶部：定位的当前城市（快速确认/切换） -->
+          <div class="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-soft">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 10c0 7-8 12-8 12s-8-5-8-12a8 8 0 0 1 16 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>定位的城市</span>
+          </div>
           <button
             type="button"
+            @click="regionOpen = false"
             class="w-full px-3 py-2 text-left hover:bg-hoverbg flex items-center justify-between text-sm"
           >
             <span class="flex items-center gap-2">
-              <span class="font-medium text-ink">东莞</span>
+              <span class="font-medium text-ink" x-text="currentRegion"></span>
               <span class="text-soft text-xs">Dongguan</span>
             </span>
             <span class="text-[10px] font-medium text-accent">当前</span>
           </button>
-          <!-- 分隔线 -->
+
           <div class="my-1 border-t border-line"></div>
-          <!-- 其他 region：灰度敬请期待 -->
-          <button
-            type="button"
-            disabled
-            class="w-full px-3 py-2 text-left flex items-center justify-between text-sm text-soft cursor-not-allowed"
-          >
-            <span class="flex items-center gap-2">
-              <span>深圳</span>
-              <span class="text-xs">Shenzhen</span>
-            </span>
-            <span class="text-[10px]">敬请期待</span>
-          </button>
-          <button
-            type="button"
-            disabled
-            class="w-full px-3 py-2 text-left flex items-center justify-between text-sm text-soft cursor-not-allowed"
-          >
-            <span class="flex items-center gap-2">
-              <span>上海</span>
-              <span class="text-xs">Shanghai</span>
-            </span>
-            <span class="text-[10px]">敬请期待</span>
-          </button>
-          <button
-            type="button"
-            disabled
-            class="w-full px-3 py-2 text-left flex items-center justify-between text-sm text-soft cursor-not-allowed"
-          >
-            <span class="flex items-center gap-2">
-              <span>北京</span>
-              <span class="text-xs">Beijing</span>
-            </span>
-            <span class="text-[10px]">敬请期待</span>
-          </button>
+
+          <!-- 中部：按省份 + 城市两级浏览 -->
+          <div class="px-3 pt-1 pb-1 text-[11px] uppercase tracking-wider text-soft">按省份浏览</div>
+          <template x-for="p in provinces" :key="p.name">
+            <div>
+              <button
+                type="button"
+                @click="expandedProvince = (expandedProvince === p.name ? null : p.name)"
+                class="w-full px-3 py-1.5 flex items-center justify-between hover:bg-hoverbg text-sm"
+              >
+                <span class="font-medium" x-text="p.name"></span>
+                <svg
+                  class="w-3 h-3 transition-transform"
+                  :class="{ 'rotate-90': expandedProvince === p.name }"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                >
+                  <path d="m9 6 6 6-6 6"/>
+                </svg>
+              </button>
+              <div x-show="expandedProvince === p.name" x-cloak>
+                <template x-for="city in p.cities" :key="city">
+                  <button
+                    type="button"
+                    @click="currentRegion = city; regionOpen = false"
+                    class="w-full pl-8 pr-3 py-1.5 text-left text-sm hover:bg-hoverbg flex items-center justify-between"
+                    :class="city === currentRegion ? 'text-accent font-medium' : 'text-muted'"
+                  >
+                    <span x-text="city"></span>
+                    <span x-show="city === currentRegion" class="text-[10px] text-accent">当前</span>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- ============ 顶部导航 ============ -->
-  <header
-    class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-line"
-    x-data="{ open: false }"
-  >
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
-
-      <!-- 站点标识：使用站点自有 logo，图片含「W 图标 + WaytoAGI · 东莞」完整字样 -->
-      <a href="#" class="flex items-center shrink-0">
-        <img
-          src="static/images/logo.jpg"
-          alt="WaytoAGI · 东莞"
-          class="h-7 sm:h-8 w-auto"
-        >
-      </a>
-
-      <!-- 主要入口：活动 / 组织 / 我的报名 -->
-      <nav class="hidden md:flex items-center gap-7 text-sm">
+      <!-- 主要入口：活动 / 我的报名（组织入口首期隐藏） -->
+      <nav class="hidden md:flex items-center gap-5 text-sm">
         <a href="#activities" class="text-ink font-medium">活动</a>
-        <a href="#" class="text-muted hover:text-ink transition">组织</a>
         <a href="#" class="text-muted hover:text-ink transition">我的报名</a>
       </nav>
 
