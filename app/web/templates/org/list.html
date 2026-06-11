@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}我的组织 - WaytoAGI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0;">
+        <h1>我的组织</h1>
+        <button onclick="showCreateModal()" style="padding: 0.5rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+            + 创建组织
+        </button>
+    </div>
+
+    <div id="orgList">
+        <p style="text-align: center; color: #999; padding: 3rem;">加载中...</p>
+    </div>
+</div>
+
+<!-- 创建组织弹窗 -->
+<div id="createModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 400px;">
+        <h3 style="margin-bottom: 1rem;">创建组织</h3>
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">组织名称</label>
+            <input type="text" id="orgName" placeholder="请输入组织名称" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">描述（可选）</label>
+            <textarea id="orgDesc" placeholder="请输入组织描述" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.5rem; resize: vertical;"></textarea>
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button onclick="hideCreateModal()" style="padding: 0.5rem 1rem; background: #f0f0f0; border: none; border-radius: 0.5rem; cursor: pointer;">取消</button>
+            <button onclick="createOrg()" style="padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">创建</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function getToken() {
+    return localStorage.getItem('access_token');
+}
+
+async function loadOrgs() {
+    const el = document.getElementById('orgList');
+    const token = getToken();
+
+    if (!token) {
+        el.innerHTML = '<p style="text-align: center; color: #999; padding: 3rem;">请先 <a href="/login" style="color: #667eea;">登录</a></p>';
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/v1/orgs', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (data.code !== 200) {
+            el.innerHTML = `<p style="text-align: center; color: #e64340; padding: 3rem;">${data.message || '加载失败'}</p>`;
+            return;
+        }
+
+        const items = data.data;
+        if (!items || items.length === 0) {
+            el.innerHTML = '<p style="text-align: center; color: #999; padding: 3rem;">你还没有加入任何组织，点击上方按钮创建一个吧</p>';
+            return;
+        }
+
+        el.innerHTML = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">` +
+            items.map(o => `
+                <div style="background: white; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                            ${o.logo_url ? `<img src="${o.logo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : o.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h3 style="font-size: 1.1rem; color: #1a1a2e;">${o.name}</h3>
+                            <span style="font-size: 0.8rem; color: #999;">${statusText(o.status)}</span>
+                        </div>
+                    </div>
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">${o.description || '暂无描述'}</p>
+                    <a href="/activities?org_id=${o.id}" style="color: #667eea; text-decoration: none; font-size: 0.9rem;">查看活动 →</a>
+                </div>
+            `).join('') + `</div>`;
+    } catch (err) {
+        el.innerHTML = '<p style="text-align: center; color: #e64340; padding: 3rem;">加载失败，请刷新重试</p>';
+    }
+}
+
+function statusText(s) {
+    const map = { active: '正常', inactive: '停用', pending: '审核中' };
+    return map[s] || s;
+}
+
+function showCreateModal() {
+    document.getElementById('createModal').style.display = 'flex';
+}
+
+function hideCreateModal() {
+    document.getElementById('createModal').style.display = 'none';
+}
+
+async function createOrg() {
+    const name = document.getElementById('orgName').value.trim();
+    const description = document.getElementById('orgDesc').value.trim();
+    const token = getToken();
+
+    if (!name) {
+        alert('请输入组织名称');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/v1/orgs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ name, description: description || undefined })
+        });
+        const data = await res.json();
+        if (data.code === 200) {
+            alert('创建成功！');
+            hideCreateModal();
+            loadOrgs();
+        } else {
+            alert(data.message || '创建失败');
+        }
+    } catch (err) {
+        alert('网络错误，请稍后重试');
+    }
+}
+
+loadOrgs();
+</script>
+{% endblock %}

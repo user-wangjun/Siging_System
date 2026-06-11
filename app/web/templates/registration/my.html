@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}我的报名 - WaytoAGI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin: 2rem 0;">我的报名</h1>
+
+    <div id="filterTabs" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+        <button onclick="loadRegistrations('all')" class="tab-btn active" data-tab="all">全部</button>
+        <button onclick="loadRegistrations('approved')" class="tab-btn" data-tab="approved">已通过</button>
+        <button onclick="loadRegistrations('pending')" class="tab-btn" data-tab="pending">待审核</button>
+        <button onclick="loadRegistrations('waitlist')" class="tab-btn" data-tab="waitlist">候补</button>
+        <button onclick="loadRegistrations('cancelled')" class="tab-btn" data-tab="cancelled">已取消</button>
+    </div>
+
+    <div id="registrationList">
+        <p style="text-align: center; color: #999; padding: 3rem;">加载中...</p>
+    </div>
+
+    <div id="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin: 2rem 0;"></div>
+</div>
+
+<style>
+.tab-btn {
+    padding: 0.5rem 1.25rem;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 2rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #666;
+    transition: all 0.2s;
+}
+.tab-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+.tab-btn:hover:not(.active) {
+    border-color: #667eea;
+    color: #667eea;
+}
+</style>
+
+<script>
+let currentPage = 1;
+let currentFilter = 'all';
+
+function getToken() {
+    return localStorage.getItem('access_token');
+}
+
+function statusText(s) {
+    const map = {
+        pending: '待审核',
+        approved: '已通过',
+        rejected: '已拒绝',
+        waitlist: '候补',
+        cancelled: '已取消'
+    };
+    return map[s] || s;
+}
+
+function statusStyle(s) {
+    const map = {
+        pending: 'background: #fff7e6; color: #faad14;',
+        approved: 'background: #e6f7e6; color: #07c160;',
+        rejected: 'background: #fff1f0; color: #e64340;',
+        waitlist: 'background: #f0f5ff; color: #1890ff;',
+        cancelled: 'background: #f0f0f0; color: #999;'
+    };
+    return map[s] || '';
+}
+
+function formatDate(iso) {
+    if (!iso) return '待定';
+    const d = new Date(iso);
+    return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+async function loadRegistrations(filter, page = 1) {
+    currentFilter = filter;
+    currentPage = page;
+
+    // 更新标签样式
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === filter);
+    });
+
+    const el = document.getElementById('registrationList');
+    el.innerHTML = '<p style="text-align: center; color: #999; padding: 3rem;">加载中...</p>';
+
+    const token = getToken();
+    if (!token) {
+        el.innerHTML = '<p style="text-align: center; color: #999; padding: 3rem;">请先 <a href="/login" style="color: #667eea;">登录</a></p>';
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/v1/users/me/registrations?status=${filter}&page=${page}&per_page=10`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (data.code !== 200) {
+            el.innerHTML = `<p style="text-align: center; color: #e64340; padding: 3rem;">${data.message || '加载失败'}</p>`;
+            return;
+        }
+
+        const items = data.data && data.data.items ? data.data.items : [];
+        if (items.length === 0) {
+            el.innerHTML = '<p style="text-align: center; color: #999; padding: 3rem;">暂无报名记录</p>';
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        el.innerHTML = `<div style="display: flex; flex-direction: column; gap: 1rem;">` +
+            items.map(r => `
+                <div style="background: white; border-radius: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                        <div>
+                            <h3 style="font-size: 1.1rem; color: #1a1a2e; margin-bottom: 0.25rem;">${r.activity_title || '未知活动'}</h3>
+                            <p style="color: #999; font-size: 0.85rem;">
+                                🕐 ${formatDate(r.activity_start_time)} &nbsp;|&nbsp; 📍 ${r.activity_location || '线上'}
+                            </p>
+                        </div>
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 500; ${statusStyle(r.status)}">
+                            ${statusText(r.status)}
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #999; font-size: 0.85rem;">报名时间: ${formatDate(r.created_at)}</span>
+                        <div style="display: flex; gap: 0.5rem;">
+                            ${r.status === 'approved' && !r.checked_in ? `
+                                <a href="/registrations/${r.id}/qrcode" style="padding: 0.4rem 1rem; background: #667eea; color: white; border-radius: 0.5rem; text-decoration: none; font-size: 0.85rem;">签到码</a>
+                            ` : r.checked_in ? `
+                                <span style="padding: 0.4rem 1rem; background: #e6f7e6; color: #07c160; border-radius: 0.5rem; font-size: 0.85rem;">已签到</span>
+                            ` : ''}
+                            ${r.status === 'approved' || r.status === 'pending' || r.status === 'waitlist' ? `
+                                <button onclick="cancelRegistration(${r.id})" style="padding: 0.4rem 1rem; background: #fff1f0; color: #e64340; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.85rem;">取消报名</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('') + `</div>`;
+
+        // 分页
+        renderPagination(data.data);
+    } catch (err) {
+        el.innerHTML = '<p style="text-align: center; color: #e64340; padding: 3rem;">加载失败，请刷新重试</p>';
+    }
+}
+
+function renderPagination(pagination) {
+    const el = document.getElementById('pagination');
+    if (!pagination || pagination.pages <= 1) {
+        el.innerHTML = '';
+        return;
+    }
+    let html = '';
+    for (let i = 1; i <= pagination.pages; i++) {
+        html += `<button onclick="loadRegistrations('${currentFilter}', ${i})" style="padding: 0.4rem 0.8rem; border: 1px solid #ddd; background: ${i === currentPage ? '#667eea' : 'white'}; color: ${i === currentPage ? 'white' : '#333'}; border-radius: 0.25rem; cursor: pointer;">${i}</button>`;
+    }
+    el.innerHTML = html;
+}
+
+async function cancelRegistration(registrationId) {
+    if (!confirm('确定要取消报名吗？')) return;
+
+    const token = getToken();
+    try {
+        const res = await fetch(`/api/v1/registrations/${registrationId}/cancel`, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.code === 200) {
+            alert('已取消报名');
+            loadRegistrations(currentFilter, currentPage);
+        } else {
+            alert(data.message || '取消失败');
+        }
+    } catch (err) {
+        alert('网络错误');
+    }
+}
+
+loadRegistrations('all');
+</script>
+{% endblock %}
