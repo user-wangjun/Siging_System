@@ -46,7 +46,7 @@
   </style>
 </head>
 
-<body class="bg-white text-ink font-sans">
+<body class="bg-white text-ink font-sans" x-data="recapPage()">
 
   <!-- ============ 顶部地区选择条（最顶上） ============ -->
   <!-- 视觉策略：低对比度细条，定位图标 + 当前 region + 简短代号；下拉展示其他 region 灰度态 -->
@@ -155,7 +155,7 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
 
       <!-- 站点标识：使用站点自有 logo，图片含「W 图标 + WaytoAGI · 东莞」完整字样 -->
-      <a href="#" class="flex items-center shrink-0">
+      <a href="https://www.waytoagi.com/zh" target="_blank" rel="noopener noreferrer" class="flex items-center shrink-0">
         <img
           src="static/images/logo.jpg"
           alt="WaytoAGI · 东莞"
@@ -217,21 +217,14 @@
     </div>
   </header>
 
-  <!-- ============ Hero（极简标题区） ============ -->
-  <section class="border-b border-line">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-      <p class="text-xs font-medium tracking-widest text-accent uppercase">Dongguan · WaytoAGI</p>
-      <h1 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">
-        东莞线下 <span class="text-accent">AGI 活动</span>
-      </h1>
-      <p class="mt-3 text-muted text-sm sm:text-base max-w-2xl">
-        关注 WaytoAGI 东莞最新 meetup、分享会、闭门讨论 —— 报名 · 签到 · 复盘 一站搞定。
-      </p>
-    </div>
-  </section>
-
   <!-- ============ 主区：按月分组的时间轴 ============ -->
-  <main id="activities" class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-12">
+  <!-- route === 'recap' 时整块隐藏，避免复盘详情被 main 盖住、看上去"点了没反应" -->
+  <main
+    id="activities"
+    x-show="route === 'home'"
+    x-transition.opacity.duration.150ms
+    class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-12"
+  >
 
     <!-- 7 月：即将开始 -->
     <section>
@@ -351,7 +344,7 @@
             </p>
           </div>
           <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
-            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</a>
+            <button type="button" @click="openRecap('ev-2026-06-14')" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</button>
             <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">下载资料</a>
           </div>
         </article>
@@ -385,7 +378,7 @@
             </p>
           </div>
           <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
-            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</a>
+            <button type="button" @click="openRecap('ev-2026-06-28')" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</button>
             <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">下载资料</a>
           </div>
         </article>
@@ -431,13 +424,221 @@
             </p>
           </div>
           <div class="sm:self-center shrink-0 flex sm:flex-col gap-2">
-            <a href="#" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</a>
+            <button type="button" @click="openRecap('ev-2026-05-17')" class="rounded-lg border border-line text-sm px-4 py-2 text-center hover:bg-hoverbg transition">查看复盘</button>
           </div>
         </article>
       </div>
     </section>
 
   </main>
+
+  <!-- ============ 复盘详情页（伪路由视图，preview 阶段不依赖后端） ============ -->
+  <!-- 设计稿见 docs/plans/2026-06-11-recap-detail-page.md §2.2 -->
+  <section
+    id="recap-detail-page"
+    x-show="route === 'recap'"
+    x-cloak
+    x-transition.opacity.duration.200ms
+    class="bg-white"
+    role="region"
+    aria-labelledby="recap-title"
+  >
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+
+      <!-- 顶部操作条：返回 + 组织徽标 -->
+      <div class="flex items-center justify-between gap-3 mb-6">
+        <button
+          type="button"
+          @click="goHome()"
+          class="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink transition"
+          aria-label="返回首页"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+          返回首页
+        </button>
+        <div class="flex items-center gap-2 text-xs text-soft">
+          <!-- 用 x-if 而不是外层 x-show：x-show 仍会求值子节点的 :src / x-text，提前 null guard -->
+          <template x-if="currentActivity">
+            <div class="flex items-center gap-2 text-xs text-soft">
+              <img :src="currentActivity.org.logo" :alt="currentActivity.org.name" class="h-5 w-5 rounded-full object-cover bg-line">
+              <span x-text="currentActivity.org.name"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 内容兜底：路由命中但 currentActivity 为空时显示 -->
+      <template x-if="route === 'recap' && !currentActivity">
+        <div class="py-20 text-center text-muted text-sm">未找到该活动的复盘，已自动返回首页…</div>
+      </template>
+
+      <!-- 正文 -->
+      <template x-if="currentActivity">
+        <div>
+
+          <!-- 1. Hero：标题 + 结束时间 -->
+          <header class="pb-6 border-b border-line" tabindex="-1" x-ref="hero">
+            <p class="text-xs font-medium tracking-widest text-accent uppercase">活动复盘</p>
+            <h1 id="recap-title" class="mt-2 text-2xl sm:text-3xl font-bold tracking-tight" x-text="currentActivity.title"></h1>
+            <p class="mt-2 text-sm text-muted">
+              <span>结束于 </span>
+              <span x-text="formatDateTime(currentActivity.endedAt)"></span>
+            </p>
+          </header>
+
+          <!-- 2. 总概文字（数组渲染为多段） -->
+          <template x-if="currentActivity.overview && currentActivity.overview.length">
+            <section class="py-8">
+              <h2 class="text-sm font-semibold text-ink mb-4">总概</h2>
+              <div class="space-y-3 text-[15px] leading-relaxed text-ink/85">
+                <template x-for="(p, i) in currentActivity.overview" :key="i">
+                  <p x-text="p"></p>
+                </template>
+              </div>
+            </section>
+          </template>
+
+          <!-- 3. 现场录音：audio.url 为 null 时显示"无"，否则作为可下载文件 -->
+          <template x-if="currentActivity.audio">
+            <section class="py-8 border-t border-line">
+              <h2 class="text-sm font-semibold text-ink mb-4">现场录音</h2>
+              <template x-if="currentActivity.audio.url">
+                <div class="rounded-xl border border-line bg-hoverbg/40 p-4 sm:p-5">
+                  <div class="flex items-center gap-3">
+                    <!-- 音频图标 -->
+                    <div class="shrink-0 w-10 h-10 rounded-lg bg-white border border-line flex items-center justify-center">
+                      <svg class="w-5 h-5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18V5l12-2v13"/>
+                        <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                      </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm font-medium text-ink truncate" x-text="currentActivity.audio.filename"></div>
+                      <div class="text-xs text-soft mt-0.5">
+                        <span x-text="formatDuration(currentActivity.audio.durationSec)"></span>
+                        <span class="mx-1">·</span>
+                        <span x-text="formatSize(currentActivity.audio.sizeBytes)"></span>
+                      </div>
+                    </div>
+                    <a
+                      :href="currentActivity.audio.url"
+                      :download="currentActivity.audio.filename"
+                      class="shrink-0 text-sm px-4 py-2 rounded-lg bg-ink text-white hover:bg-accent transition"
+                    >
+                      下载
+                    </a>
+                  </div>
+                </div>
+              </template>
+              <template x-if="!currentActivity.audio.url">
+                <p class="text-sm text-soft">无</p>
+              </template>
+            </section>
+          </template>
+
+          <!-- 4. 数据回顾：4 张统计卡 + 1 条 CSS 进度条 -->
+          <template x-if="currentActivity.stats && hasFullStats(currentActivity.stats)">
+            <section class="py-8 border-t border-line">
+              <h2 class="text-sm font-semibold text-ink mb-4">数据回顾</h2>
+
+              <!-- 4 张统计卡 -->
+              <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                <div class="rounded-xl border border-line p-4">
+                  <dt class="text-xs text-soft">报名人数</dt>
+                  <dd class="mt-1.5 text-2xl font-semibold tracking-tight" x-text="currentActivity.stats.registered"></dd>
+                </div>
+                <div class="rounded-xl border border-line p-4">
+                  <dt class="text-xs text-soft">实到人数</dt>
+                  <dd class="mt-1.5 text-2xl font-semibold tracking-tight" x-text="currentActivity.stats.attended"></dd>
+                </div>
+                <div class="rounded-xl border border-line p-4">
+                  <dt class="text-xs text-soft">签到率</dt>
+                  <dd class="mt-1.5 text-2xl font-semibold tracking-tight text-accent">
+                    <span x-text="formatPercent(currentActivity.stats.checkinRate)"></span>
+                  </dd>
+                </div>
+                <div class="rounded-xl border border-line p-4">
+                  <dt class="text-xs text-soft">缺席人数</dt>
+                  <dd class="mt-1.5 text-2xl font-semibold tracking-tight text-muted" x-text="currentActivity.stats.absent"></dd>
+                </div>
+              </dl>
+
+              <!-- 报名 vs 实到 对比条 -->
+              <div class="rounded-xl border border-line p-4">
+                <div class="flex items-center justify-between text-xs text-soft mb-2">
+                  <span>报名 vs 实到</span>
+                  <span>
+                    <span x-text="currentActivity.stats.attended"></span>
+                    <span class="mx-0.5">/</span>
+                    <span x-text="currentActivity.stats.registered"></span>
+                  </span>
+                </div>
+                <div class="relative h-2 rounded-full bg-line overflow-hidden">
+                  <!-- 报名总量（背景） -->
+                  <div class="absolute inset-0 bg-line"></div>
+                  <!-- 实到（前景，按比例填充） -->
+                  <div
+                    class="relative h-full bg-accent transition-all"
+                    :style="`width: ${ratePercent(currentActivity.stats)}%`"
+                  ></div>
+                </div>
+              </div>
+            </section>
+          </template>
+
+          <!-- 5. 资料下载：过滤掉未上传（a.url 为 null），全部未上传时显示"无" -->
+          <template x-if="currentActivity.assets && currentActivity.assets.length">
+            <section class="py-8 border-t border-line">
+              <h2 class="text-sm font-semibold text-ink mb-4">资料下载</h2>
+              <template x-if="currentActivity.assets.some(a => a.url)">
+                <ul class="space-y-2">
+                  <template x-for="a in currentActivity.assets.filter(a => a.url)" :key="a.name">
+                    <li class="flex items-center gap-3 rounded-xl border border-line p-3 sm:p-4 hover:border-ink/30 transition">
+                      <!-- 文件图标 -->
+                      <div class="shrink-0 w-10 h-10 rounded-lg bg-hoverbg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-ink truncate" x-text="a.name"></div>
+                        <div class="text-xs text-soft mt-0.5" x-text="formatSize(a.sizeBytes)"></div>
+                      </div>
+                      <a
+                        :href="a.url"
+                        class="shrink-0 text-sm px-4 py-2 rounded-lg bg-ink text-white hover:bg-accent transition"
+                      >
+                        下载
+                      </a>
+                    </li>
+                  </template>
+                </ul>
+              </template>
+              <template x-if="!currentActivity.assets.some(a => a.url)">
+                <p class="text-sm text-soft">无</p>
+              </template>
+            </section>
+          </template>
+
+        </div>
+      </template>
+    </div>
+  </section>
+
+  <!-- ============ 顶部 Toast（recap 专用，登录弹窗之外） ============ -->
+  <div
+    x-show="toast.show"
+    x-cloak
+    x-transition.opacity.duration.200ms
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-[200] px-4 py-2.5 rounded-lg bg-ink text-white text-sm shadow-lg"
+    role="status"
+    aria-live="polite"
+  >
+    <span x-text="toast.text"></span>
+  </div>
 
   <!-- ============ 页脚 ============ -->
   <footer class="border-t border-line mt-8">
@@ -450,6 +651,211 @@
       </div>
     </div>
   </footer>
+
+  <!-- ============ 复盘详情页：mock 数据 + 路由状态机 ============ -->
+  <!-- 临时预览组件：将来从 preview.html 抽取到独立 partial 复用 -->
+  <!-- 数据形状与未来 GET /api/activities/{id}/recap 保持一致（见 docs/plans/2026-06-11-recap-detail-page.md §2.3） -->
+  <script type="application/json" id="recap-mock">
+    {
+      "ev-2026-05-17": {
+        "activityId": "ev-2026-05-17",
+        "title": "AGI 入门分享会 · 东莞站",
+        "org": { "name": "WaytoAGI 东莞", "logo": "static/images/logo.jpg" },
+        "endedAt": "2026-05-17T17:00:00+08:00",
+        "overview": [
+          "本次入门场聚焦 LLM 基础概念与本地工具链，面向近三个月新加入社区的 60+ 位成员。",
+          "上午场由社区讲师 @林一、@张小白 串讲：Transformer 基础、主流闭源/开源模型矩阵、本地推理工具（Ollama / LM Studio）。",
+          "下午场拆为 4 个工坊：Prompt 工程、向量检索入门、RAG Demo、Agent 玩具搭建；现场 90% 学员完成了端到端 demo。",
+          "下一步计划把工坊资料整理成 GitHub 仓库，通过站内信推送给报名用户。"
+        ],
+        "audio": { "url": null, "filename": "recap-2026-05-17.m4a", "durationSec": 5820, "sizeBytes": 73400320 },
+        "stats": { "registered": 150, "attended": 120, "absent": 30, "checkinRate": 0.80 },
+        "assets": [
+          { "name": "工坊资料合集.zip", "sizeBytes": 94371840, "url": null },
+          { "name": "现场照片精选.zip", "sizeBytes": 188743680, "url": null }
+        ]
+      },
+      "ev-2026-06-14": {
+        "activityId": "ev-2026-06-14",
+        "title": "多模态大模型应用分享会",
+        "org": { "name": "WaytoAGI 东莞", "logo": "static/images/logo.jpg" },
+        "endedAt": "2026-06-14T17:00:00+08:00",
+        "overview": [
+          "围绕图文理解、视频生成、跨模态对齐三个方向，邀请社区一线工程师分享落地经验。",
+          "嘉宾 @王清 演示了基于 Qwen-VL 的商品审核流程，将人工审核效率提升 3 倍。",
+          "嘉宾 @黎工 开源了一套轻量视频生成工作流（GitHub Trending 当周 TOP 5），现场观众参与度高。",
+          "Q&A 集中问题：长上下文截断、视觉 token 压缩、视频生成时长与成本权衡，将整理 FAQ 推送。"
+        ],
+        "audio": { "url": null, "filename": "recap-2026-06-14.m4a", "durationSec": 9600, "sizeBytes": 115343360 },
+        "stats": { "registered": 100, "attended": 92, "absent": 8, "checkinRate": 0.92 },
+        "assets": [
+          { "name": "嘉宾 PPT 合集.zip", "sizeBytes": 25165824, "url": null },
+          { "name": "Q&A 整理.pdf",      "sizeBytes": 1048576,  "url": null }
+        ]
+      },
+      "ev-2026-06-28": {
+        "activityId": "ev-2026-06-28",
+        "title": "东莞周会 #26 · LLM 微调实战",
+        "org": { "name": "WaytoAGI 东莞", "logo": "static/images/logo.jpg" },
+        "endedAt": "2026-06-28T17:30:00+08:00",
+        "overview": [
+          "本期周会聚焦 LoRA / QLoRA 实战：嘉宾 @老周 现场跑通 7B 模型微调 demo，硬件为单卡 RTX 4090。",
+          "对比实验：full-finetune、LoRA r=8/16/32、QLoRA 4-bit，分别在客服意图分类数据集上评测。",
+          "现场抽 5 位观众上机体验，反馈集中在「资源占用」与「训练时长」两个维度的权衡。",
+          "周会代码仓库与数据集将在下周二整理后通过站内信推送。"
+        ],
+        "audio": { "url": null, "filename": "recap-2026-06-28.m4a", "durationSec": 8460, "sizeBytes": 102760448 },
+        "stats": { "registered": 60, "attended": 45, "absent": 15, "checkinRate": 0.75 },
+        "assets": [
+          { "name": "微调实验代码仓库（GitHub 链接）", "sizeBytes": 0, "url": null }
+        ]
+      }
+    }
+  </script>
+
+  <script>
+    // 复盘详情页路由状态机
+    // - 路由切换通过 history.pushState 模拟"跳页"，URL 用 hash 表达
+    // - mock 数据从 #recap-mock 节点读取，避免污染 JS 逻辑
+    // - audio / assets 各自有"无"兜底，不再需要 toast
+    function recapPage() {
+      return {
+        // ===== 路由状态 =====
+        route: 'home',                  // 'home' | 'recap'
+        currentActivity: null,          // 当前展示的复盘数据对象
+
+        // ===== 顶部 Toast =====
+        toast: { show: false, text: '', timer: null },
+
+        // ===== 初始化 =====
+        init() {
+          // 监听浏览器返回 / 前进（这部分不依赖 DOM 完整性，最先装）
+          window.addEventListener('popstate', () => this.syncFromHash());
+
+          // 加载 mock 数据：延后到 DOM 完整后再读 #recap-mock
+          // 理由：preview.html 把 mock 放在 </footer> 之后，按理说 Alpine 加载时（defer）已解析到
+          // 但用 DOMContentLoaded 兜底，能挡住未来 mock 节点位置调整导致的"找不到数据"问题
+          const loadMocks = () => {
+            this.mockData = this.loadMockData();
+            this.syncFromHash();
+          };
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadMocks, { once: true });
+          } else {
+            loadMocks();
+          }
+        },
+
+        // ===== 数据加载 =====
+        loadMockData() {
+          const el = document.getElementById('recap-mock');
+          if (!el) return {};
+          try {
+            return JSON.parse(el.textContent || '{}');
+          } catch (e) {
+            console.error('[recap] mock 数据 JSON 解析失败', e);
+            return {};
+          }
+        },
+
+        // ===== 路由控制 =====
+        openRecap(activityId) {
+          const data = this.mockData && this.mockData[activityId];
+          if (!data) {
+            this.notifyToast('未找到该活动的复盘');
+            return;
+          }
+          this.currentActivity = data;
+          this.route = 'recap';
+          // 推一条历史，方便 popstate 接管浏览器返回
+          history.pushState(
+            { page: 'recap', id: activityId },
+            '',
+            '#/recap/' + activityId
+          );
+          // 滚回顶部，避免从列表中部进入详情时定位错乱
+          window.scrollTo(0, 0);
+        },
+
+        goHome() {
+          this.route = 'home';
+          this.currentActivity = null;
+          // 通过 history.back() 触发 popstate，让 URL 与浏览器历史保持一致
+          history.back();
+        },
+
+        syncFromHash() {
+          const m = (location.hash || '').match(/^#\/recap\/([\w-]+)$/);
+          if (m && this.mockData && this.mockData[m[1]]) {
+            this.currentActivity = this.mockData[m[1]];
+            this.route = 'recap';
+          } else {
+            this.route = 'home';
+            this.currentActivity = null;
+          }
+        },
+
+        // ===== 格式化辅助 =====
+        formatSize(bytes) {
+          if (bytes == null || bytes === 0) return '—';
+          const units = ['B', 'KB', 'MB', 'GB'];
+          let i = 0;
+          let v = bytes;
+          while (v >= 1024 && i < units.length - 1) {
+            v /= 1024;
+            i++;
+          }
+          return v.toFixed(v >= 10 || i === 0 ? 0 : 1) + ' ' + units[i];
+        },
+
+        formatDuration(sec) {
+          if (sec == null) return '—';
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          return m + ':' + String(s).padStart(2, '0');
+        },
+
+        formatPercent(rate) {
+          if (rate == null) return '—';
+          return (rate * 100).toFixed(1) + '%';
+        },
+
+        formatDateTime(iso) {
+          if (!iso) return '';
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return iso;
+          // 2026-05-30 17:30（不依赖 toLocaleString，跨浏览器一致）
+          const pad = (n) => String(n).padStart(2, '0');
+          return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+            + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        },
+
+        ratePercent(stats) {
+          if (!stats || !stats.registered) return 0;
+          return Math.min(100, (stats.attended / stats.registered) * 100);
+        },
+
+        hasFullStats(stats) {
+          // 缺一即视为不完整，整块隐藏（不显示半残统计）
+          return stats
+            && Number.isFinite(stats.registered)
+            && Number.isFinite(stats.attended)
+            && Number.isFinite(stats.absent)
+            && Number.isFinite(stats.checkinRate);
+        },
+
+        // ===== 兜底提示 =====
+        notifyToast(text) {
+          this.toast.text = text;
+          this.toast.show = true;
+          if (this.toast.timer) clearTimeout(this.toast.timer);
+          this.toast.timer = setTimeout(() => {
+            this.toast.show = false;
+          }, 2200);
+        },
+      };
+    }
+  </script>
 
 </body>
 </html>

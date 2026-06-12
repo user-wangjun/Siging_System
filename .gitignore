@@ -37,6 +37,15 @@ Thumbs.db
 !.trae/rules/
 
 # =========================
+# Node.js（仅用于 preview.html 的 Node 验证脚本，如 jsdom）
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp.*
+
+# =========================
 # Python（v0.2 锁定）
 # =========================
 # 字节码与编译产物
